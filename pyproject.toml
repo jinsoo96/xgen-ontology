@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "xgen-ontology"
+version = "0.1.0"
+description = "Backend-agnostic ontology / knowledge-graph toolkit — build a clean KG from documents or tables, then search it with one-shot GraphRAG. Zero infra, any graph DB."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "jinsoo96", email = "wlstn010203@gmail.com" }]
+keywords = [
+    "ontology", "knowledge-graph", "graphrag", "rag", "sparql",
+    "rdf", "taxonomy", "entity-resolution", "owl", "llm",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/jinsoo96/xgen-ontology"
+Repository = "https://github.com/jinsoo96/xgen-ontology"
+Changelog = "https://github.com/jinsoo96/xgen-ontology/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+# Robust OWL / RDF-XML emit + parse (the zero-dep core emits Turtle on its own).
+rdf = ["rdflib>=6.0"]
+# Korean morphological normalization for dedup/governance (English-neutral by default).
+korean = ["kiwipiepy>=0.15"]
+# Embedding-based semantic dedup + vector search adapters.
+vector = ["qdrant-client>=1.7"]
+dev = ["pytest>=7", "ruff>=0.1"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/xgen_ontology"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
