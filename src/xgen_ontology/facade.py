@@ -11,18 +11,34 @@ import io
 import os
 from typing import Optional
 
+from .build.parse import load_documents
 from .build.pipeline import OntologyBuilder
 from .ontology import Ontology
 
 
 def build_from_documents(documents, llm=None, *, morphology=None, embedder=None,
-                         domain: str = "", dedup: bool = True, scs: bool = False) -> Ontology:
+                         domain: str = "", dedup: bool = True, scs: bool = False,
+                         chunk: bool = True, chunk_size: int = 1200, chunk_overlap: int = 150) -> Ontology:
     """Build an ontology from text (and/or table) documents.
 
     ``documents`` = ``{name: text}`` or ``{name: [chunk, ...]}``. Pass an ``llm`` to
-    extract from prose; table files (``.csv``/``.tsv``/``.xlsx``) build with no LLM."""
+    extract from prose; table files (``.csv``/``.tsv``/``.xlsx``) build with no LLM.
+    Raw prose strings are auto-chunked (boundary-aware) unless ``chunk=False``."""
     return OntologyBuilder(llm, morphology=morphology, embedder=embedder, domain=domain,
-                           dedup=dedup, scs=scs).build(documents)
+                           dedup=dedup, scs=scs, chunk=chunk, chunk_size=chunk_size,
+                           chunk_overlap=chunk_overlap).build(documents)
+
+
+def build_from_text(text: str, *, name: str = "document.txt", llm=None, **kwargs) -> Ontology:
+    """Build from a single raw document string (parsed already to text). It is chunked,
+    extracted (if ``llm`` given) and cleaned end-to-end."""
+    return build_from_documents({name: text}, llm=llm, **kwargs)
+
+
+def build_from_files(paths: list[str], llm=None, **kwargs) -> Ontology:
+    """Parse files (txt/md/html/csv built-in; pdf/docx/xlsx via the ``[files]`` extra),
+    then build end-to-end. Table files route to the no-LLM tabular path automatically."""
+    return build_from_documents(load_documents(paths), llm=llm, **kwargs)
 
 
 def build_from_csv(tables: dict[str, str], *, embedder=None, dedup: bool = True) -> Ontology:

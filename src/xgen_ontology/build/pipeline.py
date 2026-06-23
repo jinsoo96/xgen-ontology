@@ -9,6 +9,7 @@ all optional. The CSV path needs no LLM at all.
 from __future__ import annotations
 
 from ..models import BuildReport, Chunk, Concepts, DataValue, Instance, Relation
+from .chunk import chunk_document
 from .dedup import Deduplicator
 from .extract import DocumentExtractor
 from .hierarchy import SCSGenerator, clean_hierarchy
@@ -18,18 +19,23 @@ from .tabular import TABLE_EXTENSIONS, analyze_tables, build_from_tables
 
 class OntologyBuilder:
     def __init__(self, llm=None, *, morphology=None, embedder=None, domain: str = "",
-                 dedup: bool = True, scs: bool = False):
+                 dedup: bool = True, scs: bool = False,
+                 chunk: bool = True, chunk_size: int = 1200, chunk_overlap: int = 150):
         self.llm = llm
         self.morphology = morphology
         self.embedder = embedder
         self.domain = domain
         self.dedup = dedup
         self.scs = scs
+        self.chunk = chunk
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
 
     def build(self, documents: dict[str, list[dict]]):
         from ..ontology import Ontology  # local import (Ontology imports build.*)
 
-        documents = _normalize_documents(documents)
+        documents = _normalize_documents(documents, chunk=self.chunk,
+                                         size=self.chunk_size, overlap=self.chunk_overlap)
         table_docs = {n: c for n, c in documents.items() if _ext(n) in TABLE_EXTENSIONS}
         text_docs = {n: c for n, c in documents.items() if _ext(n) not in TABLE_EXTENSIONS}
 
@@ -89,11 +95,17 @@ def _ext(name: str) -> str:
     return name[i:].lower() if i >= 0 else ""
 
 
-def _normalize_documents(documents: dict) -> dict[str, list[dict]]:
+def _normalize_documents(documents: dict, *, chunk: bool = False,
+                         size: int = 1200, overlap: int = 150) -> dict[str, list[dict]]:
     out: dict[str, list[dict]] = {}
     for name, value in documents.items():
         if isinstance(value, str):
-            out[name] = [{"chunk_id": f"{name}#0", "chunk_text": value, "chunk_index": 0}]
+            # tables are never chunked (the whole table must stay together); prose is
+            if chunk and _ext(name) not in TABLE_EXTENSIONS:
+                out[name] = chunk_document(name, value, max_chars=size, overlap=overlap) \
+                    or [{"chunk_id": f"{name}#0", "chunk_text": value, "chunk_index": 0}]
+            else:
+                out[name] = [{"chunk_id": f"{name}#0", "chunk_text": value, "chunk_index": 0}]
         elif isinstance(value, list):
             norm = []
             for j, ch in enumerate(value):

@@ -18,16 +18,19 @@ print(onto.to_turtle())      # standards RDF/Turtle
 print(onto.search("what color is Widget").answer)
 ```
 
-Build from prose with any LLM, mix tables and text freely:
+Build from prose with any LLM, mix tables and text freely — raw documents are
+**parsed and chunked** for you:
 
 ```python
-from xgen_ontology import build_from_documents, CallableLLM
+from xgen_ontology import build_from_files, build_from_text, CallableLLM
 
 llm = CallableLLM(lambda p, system="": my_model(system, p))     # OpenAI / Anthropic / vLLM / …
-onto = build_from_documents({
-    "policy.txt": "Rule A applies to Acme Bank since 2020.",
-    "colors.csv": "color_id,name\n10,Red\n20,Blue",
-}, llm=llm)
+
+# from files on disk (txt/md/html/csv built-in; pdf/docx/xlsx via the [files] extra)
+onto = build_from_files(["policy.pdf", "products.csv"], llm=llm)
+
+# or from a single raw string (auto boundary-aware chunking)
+onto = build_from_text("Rule A applies to Acme Bank since 2020. ...", llm=llm)
 ```
 
 ## Two halves of the lifecycle
@@ -38,6 +41,8 @@ The pipeline is a sequence of independently-importable, backend-agnostic stages:
 
 | Stage | What it does |
 |------|--------------|
+| **parse** | extract text from files — txt/md/html/csv built-in (zero-dep), pdf/docx/xlsx via `[files]` |
+| **chunk** | boundary-aware chunking (paragraph→sentence→char) with overlap, stable chunk ids for provenance |
 | **tabular** | table → ontology with **no LLM**: table→Class, FK→ObjectProperty (same-name / normalized-name / value-overlap detection), column→DataProperty, dimension rows→instances; large fact/junction tables stay schema-only |
 | **extract** | one LLM call per chunk batch → schema *and* instances, tagged to source chunks; junk (base64/degenerate) filtered first |
 | **resolve** | entity resolution: fold case/whitespace/unicode + similar surface forms, *guarding* dates/ids and number-conflicting names |
@@ -90,6 +95,7 @@ it works on **any** SPARQL 1.1 endpoint — not just jena-text.
 
 ```bash
 pip install xgen-ontology                 # core, zero deps
+pip install "xgen-ontology[files]"        # + pypdf / python-docx / openpyxl (parse pdf/docx/xlsx)
 pip install "xgen-ontology[rdf]"          # + rdflib (OWL / RDF-XML emit & parse)
 pip install "xgen-ontology[korean]"       # + kiwipiepy (Korean morphological dedup)
 pip install "xgen-ontology[vector]"       # + qdrant-client (embedding adapters)
@@ -119,6 +125,8 @@ src/xgen_ontology/
   protocols.py     # LLM / GraphStore / VectorStore / GraphSink / Morphology / Embedder
   text.py          # tokenizer + BM25 (CJK n-grams), IRI-safe slugging
   build/
+    parse.py       # file -> text (txt/md/html/csv; pdf/docx/xlsx optional)
+    chunk.py       # boundary-aware chunking
     tabular.py     # table -> ontology (no LLM)
     extract.py     # document -> ontology (LLM)
     resolve.py     # entity resolution
@@ -147,4 +155,4 @@ examples/  tests/
 
 ## License
 
-TBD.
+MIT © jinsoo96. See [LICENSE](LICENSE).
