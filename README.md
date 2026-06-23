@@ -18,6 +18,13 @@ print(onto.to_turtle())      # standards RDF/Turtle
 print(onto.search("what color is Widget").answer)
 ```
 
+A knowledge graph built with xgen-ontology (degree-sized nodes, community clusters),
+shown in a graph explorer:
+
+<p align="center">
+  <img src="assets/ontology-graph.png" alt="An ontology knowledge graph built with xgen-ontology" width="760">
+</p>
+
 Build from prose with any LLM, mix tables and text freely — raw documents are
 **parsed and chunked** for you:
 
