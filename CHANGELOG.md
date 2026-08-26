@@ -1,3 +1,20 @@
+# 0.3.0 (2026-08-26)
+
+Model-agnostic extraction hardening, back-ported from the XGEN production build
+path after real-corpus A/B runs (cloud vs local models on identical input).
+
+- `parse_json_lenient` / `salvage_truncated` (llm.py): accept fenced / commented /
+  trailing-comma / smart-quote / top-array replies, and close replies cut off by
+  the output cap so complete elements survive instead of the whole batch dying.
+- Top-level key aliases (`KEY_ALIASES`): singular/plural and non-English key
+  spellings no longer silently produce 0 items.
+- Self-typed repair: entities typed as themselves (proper noun promoted to class)
+  are re-typed by the model, ratio-gated so well-behaved replies cost no extra call.
+- `verify_numeric_units` + `KO_UNIT_SCALES`: source-grounded magnitude check for
+  unit notations ("15억" written as 150000000); pluggable per language, off by default.
+- Split-on-failure: a batch whose reply cannot be parsed is halved and retried
+  (depth-capped) instead of being silently dropped.
+
 # Changelog
 
 ## 0.2.0

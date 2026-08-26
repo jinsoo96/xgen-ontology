@@ -21,6 +21,79 @@ from .govern import govern_predicates
 
 _CJK = re.compile(r"[가-힣ᄀ-ᇿ㄰-㆏぀-ヿ一-鿿㐀-䶿]")
 
+# Top-level key aliases — absorb singular/plural and non-English key spellings a
+# model may use. Without this a perfectly good reply silently becomes 0 items.
+KEY_ALIASES = {
+    "classes": ("class", "클래스", "개념", "concepts", "concept"),
+    "entities": ("entity", "개체", "인스턴스", "instances", "instance"),
+    "relations": ("relation", "관계", "triples", "triple", "relationships", "relationship"),
+    "data_values": ("datavalues", "datavalue", "data_value", "데이터값", "속성값", "values"),
+    "object_properties": ("objectproperties", "objectproperty", "object_property", "관계속성"),
+    "datatype_properties": ("datatypeproperties", "datatypeproperty", "datatype_property",
+                            "data_properties", "dataproperties", "데이터속성"),
+}
+
+
+def _normalize_keys(parsed: dict) -> dict:
+    if not isinstance(parsed, dict):
+        return parsed
+
+    def norm(k: str) -> str:
+        return str(k).strip().lower().replace(" ", "").replace("_", "").replace("-", "")
+
+    lookup: dict[str, str] = {}
+    for canon, aliases in KEY_ALIASES.items():
+        lookup[norm(canon)] = canon
+        for a in aliases:
+            lookup[norm(a)] = canon
+    out = dict(parsed)
+    for k in list(parsed.keys()):
+        canon = lookup.get(norm(k))
+        if canon and canon != k and isinstance(parsed[k], list) and not out.get(canon):
+            out[canon] = parsed[k]
+    return out
+
+
+# Korean numeric unit scales (조/억/만/천/백). Pass as ``unit_scales`` to enable
+# source-grounded magnitude verification; the default is neutral (off).
+KO_UNIT_SCALES = {"조": 10 ** 12, "억": 10 ** 8, "만": 10 ** 4, "천": 10 ** 3, "백": 10 ** 2}
+
+
+def verify_numeric_units(data_values: list, source_text: str, unit_scales: dict) -> int:
+    """Re-derive magnitudes from unit notation in the source and fix off-by-scale values.
+
+    Models frequently write "15억원" as 150000000 (one order of magnitude off);
+    prompting does not fix it. So the truth is read from the source: if the
+    source says "15억" and an extracted value has the same significant digits but
+    a different magnitude, the value is replaced with the source-derived one.
+    Different significant digits mean a different number — left untouched.
+    Returns the number of corrected values.
+    """
+    if not data_values or not source_text or not unit_scales:
+        return 0
+    unit_re = re.compile(r"(\d+(?:[.,]\d+)?)\s*(" + "|".join(map(re.escape, unit_scales)) + r")")
+    truths: dict[str, int] = {}
+    for num, unit in unit_re.findall(source_text):
+        try:
+            base = float(num.replace(",", ""))
+        except ValueError:
+            continue
+        val = int(base * unit_scales[unit])
+        mant = str(int(base)) if base == int(base) else str(base).replace(".", "")
+        truths.setdefault(mant.lstrip("0") or "0", val)
+
+    fixed = 0
+    for d in data_values:
+        raw = re.sub(r"[,\s]", "", str(getattr(d, "value", "") or ""))
+        if not raw.isdigit():
+            continue
+        mant = raw.rstrip("0").lstrip("0") or raw
+        truth = truths.get(mant)
+        if truth is not None and int(raw) != truth:
+            d.value = str(truth)
+            fixed += 1
+    return fixed
+
 _SYSTEM = (
     "You are a knowledge-graph engineer. Extract schema and instances from a document.\n"
     "Principles:\n"
@@ -56,12 +129,17 @@ class DocumentExtractor:
     """Extract a typed ontology from chunked documents using an LLM."""
 
     def __init__(self, llm, *, domain: str = "", max_text_len: int = 10000,
-                 system_prompt: str = _SYSTEM, user_template: str = _USER_TEMPLATE):
+                 system_prompt: str = _SYSTEM, user_template: str = _USER_TEMPLATE,
+                 unit_scales: dict | None = None, self_typed_ratio: float = 0.5,
+                 split_depth: int = 2):
         self.llm = llm
         self.domain = domain
         self.max_text_len = max_text_len
         self.system_prompt = system_prompt
         self.user_template = user_template
+        self.unit_scales = unit_scales
+        self.self_typed_ratio = self_typed_ratio
+        self.split_depth = split_depth
         self.llm_calls = 0
 
     def extract(
@@ -77,9 +155,19 @@ class DocumentExtractor:
         data_values: list[DataValue] = []
 
         for doc, chunks in documents.items():
-            for batch in self._batches(chunks):
+            pending = [(b, 0) for b in reversed(self._batches(chunks))]
+            while pending:
+                batch, depth = pending.pop()
                 r = self._extract_batch(doc, batch)
-                if not r:
+                if r == "junk":
+                    continue
+                if r is None:
+                    # LLM/parse failure. Dropping the batch silently loses data —
+                    # halve it and retry; a smaller reply survives caps and quirks.
+                    if len(batch) > 1 and depth < self.split_depth:
+                        mid = len(batch) // 2
+                        pending.append((batch[mid:], depth + 1))
+                        pending.append((batch[:mid], depth + 1))
                     continue
                 dc, di, dr, dv = r
                 for c in dc.classes:
@@ -128,13 +216,15 @@ class DocumentExtractor:
             parts.append(f"[CHUNK:{cid}]\n{text}" if cid else text)
         combined = "\n\n".join(parts)
         if not combined.strip() or not _is_extractable(combined):
-            return None
+            return "junk"
         text = combined[:16000]
 
         result = invoke_json(self.llm, self.system_prompt, self._user(doc, text, chunk_ids))
         self.llm_calls += 1
         if not result:
             return None
+        result = _normalize_keys(result)
+        result = self._repair_self_typed(result)
 
         fallback = [cid for cid in chunk_ids if cid]
         classes = [Class(name=c.get("name", ""), description=c.get("description", ""),
@@ -174,7 +264,55 @@ class DocumentExtractor:
                                  value=d.get("value", ""), value_type=d.get("value_type", "xsd:string"),
                                  source_chunks=d.get("source_chunks") or fallback)
                        for d in result.get("data_values", []) if d.get("entity") and d.get("property")]
+        if self.unit_scales:
+            verify_numeric_units(data_values, combined, self.unit_scales)
         return concepts, instances, relations, data_values
+
+    def _repair_self_typed(self, result: dict) -> dict:
+        """Fix entities typed as themselves (entity == class), one extra call at most.
+
+        Promoting proper nouns to classes happens on every model family and
+        flattens the schema (one private class per instance). Inventing hypernyms
+        locally would create unsupported classes, so the wrong list is handed
+        back to the model for re-typing. Fires only when the self-typed share of
+        a batch crosses ``self_typed_ratio``; well-behaved replies cost nothing.
+        """
+        ents = result.get("entities") or []
+        selfref = [e for e in ents
+                   if isinstance(e, dict) and e.get("entity") and e.get("entity") == e.get("class")]
+        if not selfref or len(selfref) < max(1, int(len(ents) * self.self_typed_ratio)):
+            return result
+        listing = "\n".join("- " + e["entity"] for e in selfref)
+        fixed = invoke_json(
+            self.llm,
+            "You are an ontology engineer. Assign each entity its proper abstract type (class).",
+            "The entities below were wrongly typed as themselves. Assign each a type.\n\n"
+            "Rules: the type must differ from the entity name and be a category in the document's\n"
+            "domain. Use the category a proper noun belongs to, not the noun itself. Several\n"
+            "entities may share one type.\n\n" + listing + "\n\n"
+            '{"types": [{"entity": "name", "class": "type"}]}',
+        )
+        self.llm_calls += 1
+        mapping = {}
+        for row in (fixed.get("types") or []):
+            if isinstance(row, dict) and row.get("entity") and row.get("class"):
+                if row["class"] != row["entity"]:
+                    mapping[row["entity"]] = row["class"]
+        if not mapping:
+            return result
+        for e in ents:
+            if isinstance(e, dict) and e.get("entity") in mapping:
+                e["class"] = mapping[e["entity"]]
+        # Drop the bogus per-instance classes; add the newly assigned types as classes.
+        dropped = set(mapping)
+        kept = [c for c in (result.get("classes") or [])
+                if not (isinstance(c, dict) and c.get("name") in dropped)]
+        have = {c.get("name") for c in kept if isinstance(c, dict)}
+        for cls in dict.fromkeys(mapping.values()):
+            if cls not in have:
+                kept.append({"name": cls, "description": "", "parent": None})
+        result["classes"] = kept
+        return result
 
     def _user(self, doc: str, text: str, chunk_ids: list[str]) -> str:
         valid = [cid for cid in chunk_ids if cid]
