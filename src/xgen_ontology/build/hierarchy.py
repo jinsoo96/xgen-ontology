@@ -10,7 +10,6 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Optional
 
 from ..llm import invoke_json
 from ..models import Concepts
@@ -105,8 +104,8 @@ class SCSGenerator:
                 cache[profile["class_name"]] = profile
         return list(cache.values())
 
-    def _parent_map(self, concepts: Concepts) -> dict[str, Optional[str]]:
-        pm: dict[str, Optional[str]] = {}
+    def _parent_map(self, concepts: Concepts) -> dict[str, str | None]:
+        pm: dict[str, str | None] = {}
         for parent, child in concepts.class_hierarchy:
             pm[child] = parent
         for c in concepts.classes:

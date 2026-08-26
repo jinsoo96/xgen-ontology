@@ -16,13 +16,14 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 
 
 class EchoLLM:
     """No-op LLM: echoes the evidence. Lets the pipeline run with zero credentials."""
 
-    def generate(self, prompt: str, *, system: str = "", timeout: Optional[float] = None) -> str:
+    def generate(self, prompt: str, *, system: str = "", timeout: float | None = None) -> str:
         return prompt
 
 
@@ -32,7 +33,7 @@ class CallableLLM:
     def __init__(self, fn: Callable[..., str]):
         self._fn = fn
 
-    def generate(self, prompt: str, *, system: str = "", timeout: Optional[float] = None) -> str:
+    def generate(self, prompt: str, *, system: str = "", timeout: float | None = None) -> str:
         try:
             return self._fn(prompt, system=system)
         except TypeError:
@@ -59,7 +60,7 @@ def invoke_json(llm: Any, system: str, user: str) -> dict:
     return obj if isinstance(obj, dict) else {}
 
 
-def parse_json_lenient(text: str) -> Optional[dict]:
+def parse_json_lenient(text: str) -> dict | None:
     """Accept JSON however the model wraps it.
 
     Order: fenced block anywhere -> direct parse -> comment/trailing-comma
@@ -133,7 +134,7 @@ def _relax(txt: str) -> str:
     return re.sub(r",\s*([}\]])", r"\1", s2)
 
 
-def _balanced(txt: str) -> Optional[str]:
+def _balanced(txt: str) -> str | None:
     """First { or [ through its matching close. A greedy regex would swallow trailing prose."""
     start = min([p for p in (txt.find("{"), txt.find("[")) if p >= 0], default=-1)
     if start < 0:
@@ -162,7 +163,7 @@ def _balanced(txt: str) -> Optional[str]:
     return None
 
 
-def salvage_truncated(txt: str) -> Optional[Any]:
+def salvage_truncated(txt: str) -> Any | None:
     """Close a reply cut off mid-generation and keep the complete elements.
 
     On a slow model one truncated call costs minutes of decode time; discarding

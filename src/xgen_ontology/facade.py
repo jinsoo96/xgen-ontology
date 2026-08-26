@@ -9,7 +9,6 @@ from __future__ import annotations
 import csv as _csv
 import io
 import os
-from typing import Optional
 
 from .build.parse import load_documents
 from .build.pipeline import OntologyBuilder
@@ -65,7 +64,7 @@ def build_from_triples(triples, chunks=None) -> Ontology:
     return Ontology.from_triples(triples, chunks=chunks)
 
 
-def rows_to_csv(rows: list[dict], *, columns: Optional[list[str]] = None) -> str:
+def rows_to_csv(rows: list[dict], *, columns: list[str] | None = None) -> str:
     """Helper: turn a list of row dicts into CSV text for :func:`build_from_csv`."""
     if not rows:
         return ""

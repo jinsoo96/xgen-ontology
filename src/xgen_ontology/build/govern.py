@@ -66,9 +66,7 @@ def govern_predicates(
         norm = normalize_predicate(pred, suffix_pattern=suffix_pattern)
         if not norm:
             continue
-        if norm not in canon_by_norm:
-            canon_by_norm[norm] = pred
-        elif norm not in schema_norms and len(pred) < len(canon_by_norm[norm]):
+        if norm not in canon_by_norm or norm not in schema_norms and len(pred) < len(canon_by_norm[norm]):
             canon_by_norm[norm] = pred
 
     distinct_before = {(r.predicate or "").strip() for r in relations if (r.predicate or "").strip()}

@@ -1,7 +1,14 @@
 import json
 
-from xgen_ontology import (CallableLLM, build_from_files, build_from_text, chunk_document,
-                           chunk_text, html_to_text, load_documents)
+from xgen_ontology import (
+    CallableLLM,
+    build_from_files,
+    build_from_text,
+    chunk_document,
+    chunk_text,
+    html_to_text,
+    load_documents,
+)
 
 
 def test_chunk_text_respects_max_and_overlaps():

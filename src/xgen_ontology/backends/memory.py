@@ -8,7 +8,7 @@ embeddings are present, else BM25 over chunk text.
 from __future__ import annotations
 
 import math
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from ..models import Chunk, Node
 from ..text import BM25, tokenize
@@ -64,7 +64,7 @@ class InMemoryGraph:
     def count_class(self, class_id: str) -> int:
         return len(self._members.get(class_id, []))
 
-    def get_node(self, node_id: str) -> Optional[Node]:
+    def get_node(self, node_id: str) -> Node | None:
         return self.nodes.get(node_id)
 
 
@@ -78,7 +78,7 @@ def _cosine(a: list[float], b: list[float]) -> float:
 class InMemoryVector:
     """Passage store: cosine when embeddings + embedder present, else BM25 over text."""
 
-    def __init__(self, chunks: list[Chunk], *, embedder: Optional[Callable[[str], list[float]]] = None):
+    def __init__(self, chunks: list[Chunk], *, embedder: Callable[[str], list[float]] | None = None):
         self.chunks = chunks
         self._by_id = {c.id: c for c in chunks}
         self.embedder = embedder
@@ -102,9 +102,9 @@ class InMemoryGraphSink:
     """A GraphSink that just keeps the uploaded Turtle (for tests / dry runs)."""
 
     def __init__(self):
-        self.graphs: dict[Optional[str], str] = {}
+        self.graphs: dict[str | None, str] = {}
 
-    def upload_turtle(self, ttl: str, *, graph: Optional[str] = None, clear: bool = False) -> None:
+    def upload_turtle(self, ttl: str, *, graph: str | None = None, clear: bool = False) -> None:
         if clear or graph not in self.graphs:
             self.graphs[graph] = ttl
         else:

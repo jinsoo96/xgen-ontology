@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 import re
-from typing import Optional
 
 from ..models import Concepts, DataValue, Instance, RDFTriple, Relation
 from ..text import safe_uri
@@ -35,7 +34,7 @@ def to_rdf_triples(
     relations: list[Relation],
     data_values: list[DataValue],
     *,
-    translations: Optional[dict[str, str]] = None,
+    translations: dict[str, str] | None = None,
     include_source_chunks: bool = True,
 ) -> list[RDFTriple]:
     translations = translations or {}

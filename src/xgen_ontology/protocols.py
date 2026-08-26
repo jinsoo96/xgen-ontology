@@ -7,7 +7,7 @@ by passing objects that match these shapes.
 """
 from __future__ import annotations
 
-from typing import Optional, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from .models import Chunk, Node
 
@@ -17,7 +17,7 @@ class LLM(Protocol):
     """A language model. ``generate`` is used for search synthesis; the build stages
     additionally expect JSON back (parsed leniently from ``generate``'s output)."""
 
-    def generate(self, prompt: str, *, system: str = "", timeout: Optional[float] = None) -> str:
+    def generate(self, prompt: str, *, system: str = "", timeout: float | None = None) -> str:
         ...
 
 
@@ -37,7 +37,7 @@ class GraphStore(Protocol):
     def count_class(self, class_id: str) -> int:
         ...
 
-    def get_node(self, node_id: str) -> Optional[Node]:
+    def get_node(self, node_id: str) -> Node | None:
         ...
 
 
@@ -56,7 +56,7 @@ class VectorStore(Protocol):
 class GraphSink(Protocol):
     """Write-side: load a built ontology (as Turtle) into any triple store."""
 
-    def upload_turtle(self, ttl: str, *, graph: Optional[str] = None, clear: bool = False) -> None:
+    def upload_turtle(self, ttl: str, *, graph: str | None = None, clear: bool = False) -> None:
         ...
 
 

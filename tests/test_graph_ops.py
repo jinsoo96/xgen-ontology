@@ -1,8 +1,7 @@
 from xgen_ontology import clean_hierarchy, louvain_communities, review_quality, to_turtle
 from xgen_ontology.build.emit import to_rdf_triples
 from xgen_ontology.build.hierarchy import SCSGenerator
-from xgen_ontology.models import (Class, Concepts, DataProperty, DataValue, Instance,
-                                  ObjectProperty, Relation)
+from xgen_ontology.models import Class, Concepts, DataProperty, DataValue, Instance, ObjectProperty, Relation
 
 
 def test_louvain_two_communities():

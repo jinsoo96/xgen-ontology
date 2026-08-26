@@ -2,4 +2,4 @@
 from .memory import InMemoryGraph, InMemoryGraphSink, InMemoryVector
 from .sparql import SparqlGraph
 
-__all__ = ["InMemoryGraph", "InMemoryVector", "InMemoryGraphSink", "SparqlGraph"]
+__all__ = ["InMemoryGraph", "InMemoryGraphSink", "InMemoryVector", "SparqlGraph"]

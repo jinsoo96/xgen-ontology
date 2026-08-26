@@ -15,7 +15,6 @@ Runs against any GraphStore / VectorStore / LLM (in-memory by default).
 from __future__ import annotations
 
 import re
-from typing import Optional
 
 from ..llm import EchoLLM
 from ..models import SearchResult
@@ -38,7 +37,7 @@ class GraphRAG:
         self,
         graph: GraphStore,
         vector: VectorStore,
-        llm: Optional[LLM] = None,
+        llm: LLM | None = None,
         *,
         vector_k: int = 20,
         sem_ratio: float = 0.55,

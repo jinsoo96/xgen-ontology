@@ -3,7 +3,10 @@ self-typed repair / unit verification / split-on-failure."""
 import json
 
 from xgen_ontology.build.extract import (
-    KO_UNIT_SCALES, DocumentExtractor, _normalize_keys, verify_numeric_units,
+    KO_UNIT_SCALES,
+    DocumentExtractor,
+    _normalize_keys,
+    verify_numeric_units,
 )
 from xgen_ontology.llm import CallableLLM, parse_json_lenient, salvage_truncated
 from xgen_ontology.models import DataValue

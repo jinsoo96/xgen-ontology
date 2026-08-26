@@ -12,7 +12,6 @@ import base64
 import json
 import urllib.parse
 import urllib.request
-from typing import Optional
 
 from ..models import Node
 from ..text import tokenize
@@ -29,12 +28,12 @@ class SparqlGraph:
     def __init__(
         self,
         query_url: str,
-        graph_uri: Optional[str] = None,
+        graph_uri: str | None = None,
         *,
-        update_url: Optional[str] = None,
-        gsp_url: Optional[str] = None,
-        user: Optional[str] = None,
-        password: Optional[str] = None,
+        update_url: str | None = None,
+        gsp_url: str | None = None,
+        user: str | None = None,
+        password: str | None = None,
         timeout: float = 30,
     ):
         self.query_url = query_url
@@ -124,14 +123,14 @@ class SparqlGraph:
         bs = self._query(q).get("results", {}).get("bindings", [])
         return int(bs[0]["c"]["value"]) if bs else 0
 
-    def get_node(self, node_id: str) -> Optional[Node]:
+    def get_node(self, node_id: str) -> Node | None:
         q = f"SELECT ?l WHERE {{ {self._g(f'<{node_id}> <{_RDFS_LABEL}> ?l')} }} LIMIT 1"
         bs = self._query(q).get("results", {}).get("bindings", [])
         return Node(node_id, (bs[0]["l"]["value"] if bs else self._local(node_id)))
 
     # ── GraphSink (write) ──
 
-    def upload_turtle(self, ttl: str, *, graph: Optional[str] = None, clear: bool = False) -> None:
+    def upload_turtle(self, ttl: str, *, graph: str | None = None, clear: bool = False) -> None:
         g = graph or self.graph_uri
         if self.gsp_url:
             url = self.gsp_url

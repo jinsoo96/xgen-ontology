@@ -14,14 +14,12 @@ chunks) that you can:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 from .backends.memory import InMemoryGraph, InMemoryVector
 from .build import emit as _emit
 from .build.community import detect_communities
 from .build.quality import review_quality
-from .models import (BuildReport, Chunk, Concepts, DataValue, Instance, Node,
-                     RDFTriple, Relation, SearchResult)
+from .models import BuildReport, Chunk, Concepts, DataValue, Instance, Node, RDFTriple, Relation, SearchResult
 from .search.oneshot import GraphRAG
 
 _ISA_PREDICATES = {"instanceof", "instance_of", "type", "rdf:type", "a", "subclassof", "subclass_of", "is-a", "isa"}
@@ -98,7 +96,7 @@ class Ontology:
     def to_owl(self) -> str:
         return _emit.to_owl_xml(self.to_rdf_triples())
 
-    def push(self, sink, *, graph: Optional[str] = None, clear: bool = True) -> None:
+    def push(self, sink, *, graph: str | None = None, clear: bool = True) -> None:
         sink.upload_turtle(self.to_turtle(), graph=graph, clear=clear)
 
     # ── review ──
@@ -123,7 +121,7 @@ class Ontology:
     # ── search-only convenience ──
 
     @classmethod
-    def from_triples(cls, triples, chunks=None) -> "Ontology":
+    def from_triples(cls, triples, chunks=None) -> Ontology:
         """Build a searchable ontology from loose ``(s, p, o)`` triples (no LLM).
 
         is-a edges (``instanceOf`` / ``type`` / ``subClassOf`` / ...) seed classes

@@ -11,7 +11,7 @@ Two families:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 # ───────────────────────── build schema (T-Box) ─────────────────────────
 
@@ -22,7 +22,7 @@ class Class:
 
     name: str
     description: str = ""
-    parent: Optional[str] = None
+    parent: str | None = None
     source_chunks: list[str] = field(default_factory=list)
 
 
@@ -108,7 +108,7 @@ class Chunk:
     id: str
     text: str
     entities: list[str] = field(default_factory=list)
-    embedding: Optional[list[float]] = None
+    embedding: list[float] | None = None
     meta: dict[str, Any] = field(default_factory=dict)
 
 

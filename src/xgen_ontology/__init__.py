@@ -15,24 +15,43 @@ Quickstart — deterministic table -> ontology, no LLM, no infra::
     print(onto.search("what color is Widget").answer)   # EchoLLM by default
     onto.to_turtle()                                      # serialize to RDF
 """
+from .backends.memory import InMemoryGraph, InMemoryGraphSink, InMemoryVector
+from .backends.sparql import SparqlGraph, fuseki
 from .build.chunk import chunk_document, chunk_text
 from .build.community import detect_communities, louvain_communities
 from .build.dedup import Deduplicator, cluster_by_cosine
 from .build.emit import to_owl_xml, to_rdf_triples, to_turtle
-from .build.parse import extract_text, html_to_text, load_documents
 from .build.govern import govern_predicates, normalize_predicate
 from .build.hierarchy import SCSGenerator, clean_hierarchy
+from .build.parse import extract_text, html_to_text, load_documents
 from .build.pipeline import OntologyBuilder
 from .build.quality import review_quality
 from .build.resolve import resolve_entities
 from .build.tabular import analyze_tables, build_from_tables
-from .backends.memory import InMemoryGraph, InMemoryGraphSink, InMemoryVector
-from .backends.sparql import SparqlGraph, fuseki
-from .facade import (build_from_csv, build_from_csv_files, build_from_documents,
-                     build_from_files, build_from_text, build_from_triples, rows_to_csv)
+from .facade import (
+                     build_from_csv,
+                     build_from_csv_files,
+                     build_from_documents,
+                     build_from_files,
+                     build_from_text,
+                     build_from_triples,
+                     rows_to_csv,
+)
 from .llm import CallableLLM, EchoLLM
-from .models import (BuildReport, Chunk, Class, Concepts, DataProperty, DataValue,
-                     Instance, Node, ObjectProperty, RDFTriple, Relation, SearchResult)
+from .models import (
+                     BuildReport,
+                     Chunk,
+                     Class,
+                     Concepts,
+                     DataProperty,
+                     DataValue,
+                     Instance,
+                     Node,
+                     ObjectProperty,
+                     RDFTriple,
+                     Relation,
+                     SearchResult,
+)
 from .ontology import Ontology
 from .protocols import LLM, Embedder, GraphSink, GraphStore, Morphology, VectorStore
 from .search.oneshot import GraphRAG
